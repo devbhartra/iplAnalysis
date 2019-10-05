@@ -34,7 +34,7 @@ if __name__ == "__main__":
 	lines = spark.read.text("hdfs://localhost:9000/input/BowlerRankTestData.txt").rdd.map(lambda r: r[0])
 
 	# every bowler with the set of players who faced him ***links go from batsman to bowler***
-	links = lines.map(lambda x: x.split(',')).map(lambda x: (x[1],x[0])).groupByKey().cache()
+	links = lines.map(lambda x: x.split(',')).map(lambda x: (x[0],x[1])).groupByKey().cache()	#x[0] -> batsman & x[1] -> bowler
 
 	# using max(sum(averages),1) for each bowler's inital rank
 	#initial_ranks = lines.map(lambda x: x.split(',')).map(lambda x: (x[1],1) if ((int(x[2])/int(x[3])) < 1) else (x[1],int(x[2])/int(x[3])) ).reduceByKey(add)
@@ -42,15 +42,17 @@ if __name__ == "__main__":
 
 	ranks = initial_ranks.map(lambda x: (x[0],1) if (x[1]<1) else (x[0],x[1]))
 
-	initial_ranks_output = ranks.collect()		#collect() action causes all transformations in the above line
+	old_ranks = ranks.collect()
+
+	total = initial_ranks.count()
 
 	# Print INITIAL RANK LIST and length
 	print("\n")
-	for (bowler,avg) in initial_ranks_output:
+	for (bowler,avg) in old_ranks:
 		print(bowler,avg)
 	print("\n")
 
-	print("\n Ranks Count:",initial_ranks.count(),"\n\n")
+	print("\n Ranks Count:",total,"\n\n")
 
 	links_output = links.collect()
 
@@ -64,14 +66,43 @@ if __name__ == "__main__":
 
 	# Compute new ranks
 
-	for i in range(int(sys.argv[1])):
+	convergence = False
+	c = 1
 
-		contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
+	if(int(sys.argv[1]) > 0):
 
-		ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank*0.80 + 0.20)
+		for i in range(int(sys.argv[1])):
 
-		new_ranks_output = ranks.collect()
+			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
 
+			ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank*0.80 + 0.20)
+
+	else:
+		while( not convergence):
+
+			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
+
+			ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank*0.80 + 0.20)
+
+			new_ranks = ranks.collect()
+
+			for i in range(total):
+				diff = new_ranks[i][1] - old_ranks[i][1]
+				name = old_ranks[i][0]
+				if(diff < 1):
+					convergence = True
+				else:
+					convergence = False
+					break
+
+			print("\n\n")
+			print("Did not converge - Iteration ",c,". Failed at - ",name," Difference - ",diff)
+			print("\n\n")
+			c = c+1
+			old_ranks = ranks.collect()
+
+
+	new_ranks_output = ranks.collect()
 
 	sorted_output = sort_output(new_ranks_output)
 
