@@ -116,7 +116,7 @@ if __name__ == "__main__":
 	# Print NEW RANKS
 	print("\n")
 	for (bowler,rank) in sorted_output:
-		print(bowler,rank)
+		print(bowler,"{:.12f}".format(rank))
 	print("\n")
 
 	print("\nNumber of Iterations: \n",c)
