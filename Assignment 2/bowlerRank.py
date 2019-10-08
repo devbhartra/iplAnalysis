@@ -116,10 +116,10 @@ if __name__ == "__main__":
 	# Print NEW RANKS
 	print("\n")
 	for (bowler,rank) in sorted_output:
-		print(bowler,"{:.12f}".format(rank))
+		print(bowler,round(rank,12))
 	print("\n")
 
-	print("\nNumber of Iterations: \n",c)
+	print("\nNumber of Iterations: ",c)
 
 	spark.stop()
 
