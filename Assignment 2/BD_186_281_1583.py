@@ -130,10 +130,19 @@ if __name__ == "__main__":
 
 	sorted_output = ranks.sortBy(lambda x:x[1], False)
 
-	# Print NEW RANKS
+	#print("\nSORTED OUTPUT\n")
+	#for (bowler,rank) in ranks:
+	#	print(bowler,round(rank,12))
 	#print("\n")
+
+	sorted_output = ranks.sortBy(lambda x: x[1],False).collect()
+
+	#sorted_output = ranks.takeOrdered(final_count, key = lambda x: -x[1])
+
+	# Print NEW RANKS
+	#print("\nFINAL OUTPUT\n")
 	for (bowler,rank) in sorted_output:
-		print(bowler,round(rank,12))
+		print(bowler,round(rank,12),sep=",")
 	#print("\n")
 
 	#print("\nNumber of Iterations: ",c)
