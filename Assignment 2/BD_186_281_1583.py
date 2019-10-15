@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
 			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
 
-			ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank*calc_weight + (1-calc_weight))
+			ranks = contribs.reduceByKey(add).mapValues(lambda rank: (rank*calc_weight) + (1-calc_weight))
 
 			new_ranks = ranks.sortByKey().collect()
 
@@ -118,11 +118,17 @@ if __name__ == "__main__":
 			old_ranks = new_ranks
 
 
-	new_ranks_output = ranks.collect()
+	#new_ranks_output = ranks.collect()
 
 	final_count = ranks.count()
 
-	sorted_output = ranks.takeOrdered(final_count, key = lambda x: -x[1])
+	#ranks = ranks.takeOrdered(final_count, key = lambda x: x[0])
+
+	#sorted_output = ranks.takeOrdered(final_count, key = lambda x: -x[1])
+
+	ranks = ranks.sortBy(lambda x: x[0],True)
+
+	sorted_output = ranks.sortBy(lambda x:x[1], False)
 
 	# Print NEW RANKS
 	#print("\n")
