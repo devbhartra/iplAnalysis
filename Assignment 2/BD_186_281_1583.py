@@ -7,144 +7,83 @@ Links are between every batsman-bowler pair as given in the dataset
 '''
 
 from __future__ import print_function
+import sys
+import re
 from operator import add
 from pyspark.sql import SparkSession
-import sys
-import findspark
 
-findspark.init()
+def splitNeighbors(x):
+	y = x.split(',')
+	return y[0],y[1]	#x[0] -> batsman & x[1] -> bowler
 
+def findInitialRanks(x):
+	y = x.split(',')
+	rank = float(float(y[2])/float(y[3]))
+	return y[1], rank
 
-def computeContribs(merged_tuple):
-	batsman_list = merged_tuple[1][0]	#list of batsman the bowler has bowled to
-	current_rank = merged_tuple[1][1]	#the bowlers current rank
-	batsman_num = len(batsman_list)
-
-	for n in batsman_list:
-		yield(n, current_rank/batsman_num)
-
+def computeContribs(player_list,rank):
+	num = len(player_list)
+	
+	for player in player_list:
+		yield (player,float(rank/num))
 
 if __name__ == "__main__":
 
-	spark = SparkSession.builder.appName("bowlerRank").getOrCreate()
-
+	spark = SparkSession.builder.appName("pagerank").getOrCreate()
 	filename = sys.argv[1]	#input dataset
 
 	lines = spark.read.text(filename).rdd.map(lambda r: r[0])
 
 	# every bowler with the set of players who faced him ***links go from batsman to bowler***
-	links = lines.map(lambda x: x.split(',')).map(lambda x: (x[0],x[1])).groupByKey().cache()	#x[0] -> batsman & x[1] -> bowler
+	links = lines.map(lambda x: splitNeighbors(x)).groupByKey().cache()
 
-	# using max(sum(averages),1) for each bowler's inital rank
-	#initial_ranks = lines.map(lambda x: x.split(',')).map(lambda x: (x[1],1) if ((int(x[2])/int(x[3])) < 1) else (x[1],int(x[2])/int(x[3])) ).reduceByKey(add)
-	initial_ranks = lines.map(lambda x: x.split(',')).map(lambda x: (x[1],int(x[2])/int(x[3]))).reduceByKey(add)
+	initial_ranks = lines.map(lambda x: findInitialRanks(x)).reduceByKey(add).cache()
 
-	ranks = initial_ranks.map(lambda x: (x[0],1) if (x[1]<1) else (x[0],x[1]))
-
-	old_ranks = ranks.sortByKey().collect()
-
-	total = initial_ranks.count()
-
-	# Print INITIAL RANK LIST and length
-	#print("\n")
-	#for (bowler,avg) in old_ranks:
-		#print(bowler,avg)
-	#print("\n")
-
-	#print("\n Ranks Count:",total,"\n\n")
-
-	links_output = links.collect()
-
-	# Print INITIAL LINK LIST and length
-	#print("\n")
-	#for (bowler,l) in links_output:
-		#print(bowler,list(l),"\n")
-	#print("\n")
-
-	#print("\n Link Count:",links.count(),"\n\n")
-
+	ranks = initial_ranks.map(lambda x: (x[0],1) if (x[1] < 1) else (x[0],x[1]))
+	old_ranks = ranks
 
 	# Compute new ranks
 
-	convergence = False	# convergence condition
-	c = 0			# iteration count
+	convergence = False	#convergence condition
+	c = 0			#iteration count
+	rank_weight = 0.80
+	default_weight = 0.20
+	#weights
+	w = int(sys.argv[3])
+	if ( w != 0):
+		rank_weight =  w/100
+		default_weight = 1 - rank_weight
 
-	calc_weight = 0.80
-
-	# weight argument
-	if(int(sys.argv[3]) != 0):
-		calc_weight = (int(sys.argv[3]))/100
-
-
-	#print("\n\nCALC WEIGHT: ",calc_weight,"\n\n")
-
-	# For Iterative computation
-	if(int(sys.argv[2]) > 0):
-
+	if(int(sys.argv[2]) != 0):	#iterative
 		for i in range(int(sys.argv[2])):
-
-			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
-
-			ranks = contribs.reduceByKey(add).mapValues(lambda rank: (rank*calc_weight) + (1-calc_weight))
-
-	# For computation until convergence
+			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x[1][0],x[1][1]))
+			ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank * rank_weight + default_weight)
 	else:
-		while( not convergence):
-			c = c + 1
-			#print("\nIN WHILE LOOP\n")
-			#print("ITERATION ",c,"\n")
+		while(not convergence):	#convergence
+			c = c+1
+			#print("\n\n\n",c,"\n\n\n")
+			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x[1][0],x[1][1]))
+			ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank * rank_weight + default_weight)
 
-			contribs = links.join(ranks).flatMap(lambda x: computeContribs(x))
-
-			ranks = contribs.reduceByKey(add).mapValues(lambda rank: (rank*calc_weight) + (1-calc_weight))
-
-			new_ranks = ranks.sortByKey().collect()
-
-			for i in range(total):
-
-				diff = abs(old_ranks[i][1] - new_ranks[i][1])
-
-				name = old_ranks[i][0]
-
-				#print(old_ranks[i][0]," ",new_ranks[i][0]," ",old_ranks[i][1]," ",new_ranks[i][1]," ",diff)
-
-				if(diff < 0.0001):
-					convergence = True
-				else:
+			temp = old_ranks.collect()
+			
+			# sort new and old independently
+			ranks = ranks.sortBy(lambda x: x[0], True)			
+			old_ranks = old_ranks.sortBy(lambda x: x[0],True)
+			
+			for i,j in zip(old_ranks.collect(),ranks.collect()):
+				if(abs(float(j[1])-float(i[1]))>=0.0001):
 					convergence = False
-					#print("\nDid not converge - Iteration ",c,". Failed at - ",name," Difference - ",diff,"\n")
 					break
+				else:
+					convergence = True
+			old_ranks = ranks
+	
+	ranks=ranks.sortBy(lambda x:x[0],True)
 
-			old_ranks = new_ranks
+	ranks=ranks.sortBy(lambda x:x[1],False)
 
-
-	#new_ranks_output = ranks.collect()
-
-	final_count = ranks.count()
-
-	#ranks = ranks.takeOrdered(final_count, key = lambda x: x[0])
-
-	#sorted_output = ranks.takeOrdered(final_count, key = lambda x: -x[1])
-
-	ranks = ranks.sortBy(lambda x: x[0],True)
-
-	sorted_output = ranks.sortBy(lambda x:x[1], False)
-
-	#print("\nSORTED OUTPUT\n")
-	#for (bowler,rank) in ranks:
-	#	print(bowler,round(rank,12))
-	#print("\n")
-
-	sorted_output = ranks.sortBy(lambda x: x[1],False).collect()
-
-	#sorted_output = ranks.takeOrdered(final_count, key = lambda x: -x[1])
-
-	# Print NEW RANKS
-	#print("\nFINAL OUTPUT\n")
-	for (bowler,rank) in sorted_output:
-		print(bowler,round(rank,12),sep=",")
-	#print("\n")
-
-	#print("\nNumber of Iterations: ",c)
+	for (player, rank) in ranks.collect():
+	        print("%s,%.12f" % (player,float(rank)))
 
 	spark.stop()
