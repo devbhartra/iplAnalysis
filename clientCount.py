@@ -38,7 +38,7 @@ dfCSV.createOrReplaceTempView("clientCount")
 print("\n\ndfCSV contains: ",dfCSV)
 
 # SQL query on the data
-allSources = spark.sql("select Source,count(Source) as client_count from commonHashtag group by Source")
+allSources = spark.sql("select Source,count(Source) as client_count from clientCount group by Source")
 
 # Start spark standard streaming query.
 query = allSources.writeStream.outputMode("complete").format("console").start()
