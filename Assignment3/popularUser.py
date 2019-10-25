@@ -46,7 +46,7 @@ dfCSV.createOrReplaceTempView("popularUser")
 
 #followers = spark.sql("select Followers from popularUser")
 #friends = spark.sql("select Friends from popularUser")
-popularity = spark.sql("select (CAST (Followers as DOUBLE))/(CAST (Friends as DOUBLE))from popularUser")
+popularity = spark.sql("select Name, Followers/Friends as Ratio from popularUser")
 
 #print(followers)
 #print (friends)
