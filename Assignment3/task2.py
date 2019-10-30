@@ -19,11 +19,11 @@ if __name__ == "__main__":
     ssc = StreamingContext(sc, int(sys.argv[2]))
 
     lines = ssc.socketTextStream('localhost', 9009)
-    lines=lines.window(int(sys.argv[1]),slideDuration=None)
+    #lines=lines.window(int(sys.argv[1]),slideDuration=None)
     counts = lines.map(lambda line: line.split(';')[7])\
                   .flatMap(lambda x:x.split(','))\
                   .map(lambda word: (word, 1))\
-                  .reduceByKey(lambda a, b: a+b)
+                  .reduceByKeyAndWindow(lambda a, b: a+b,None,int(sys.argv[1]),int(sys.argv[2]))
     counts.foreachRDD(sortrecord)
     #counts.pprint(3)
 
