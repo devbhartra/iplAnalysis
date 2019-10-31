@@ -8,12 +8,20 @@ ID,Lang,Date,Source,len,Likes,RT's,Hashtags,UserMentionNames,UserMentionID,Name,
 The file is being read from /stream directory on HDFS.
 '''
 # import files
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, Row
 from pyspark.sql.types import StructType
 from pyspark.sql.functions import split, explode, col
+from pyspark.sql.functions import *
+#from org.apache.log4j import *
+
+#Logger.getLogger("org").setLevel(Level.OFF);
+#Logger.getLogger("akka").setLevel(Level.OFF);
 
 # Create a spark session. handle name -> spark
 spark = SparkSession.builder.appName("Streaming-commonHashtag").getOrCreate()
+
+spark = SparkSession.builder.master("local").appName("test-mf").getOrCreate()
+spark.sparkContext.setLogLevel("ERROR")
 
 # Define schema of csv
 userSchema = StructType()\
@@ -38,8 +46,8 @@ dfCSV = spark.readStream.option("sep",";").option("header","false").schema(userS
 # Creates temporary view for the given name
 dfCSV.createOrReplaceTempView("commonHashtag")
 
-print("\ndfCSV contains: ",dfCSV)
-print("\ntype of dfCSV: ",type(dfCSV))
+#print("\ndfCSV contains: ",dfCSV)
+#print("\ntype of dfCSV: ",type(dfCSV))
 
 # SQL query on the data
 
@@ -47,14 +55,15 @@ allTags = spark.sql("select Hashtags from commonHashtag")
 
 hashtags = allTags.select(explode(split(allTags['Hashtags'],",")).alias("Hashtag"))	
 
-hashTagCount = hashtags.groupBy("Hashtag").count().orderBy(col("count").desc())
+hashTagCount = hashtags.groupBy("Hashtag").count().orderBy(col("count").desc()).limit(5)
 
 # Start spark standard streaming query.
 query = hashTagCount.writeStream.outputMode("complete").format("console").start()
+print(type(query))
 
-print("\nallTags type: ",type(allTags))
-print("\nhashtag type: ",type(hashtags))
-print("\nhashTagCount list type: ",type(hashTagCount))
+#print("\nallTags type: ",type(allTags))
+#print("\nhashtag type: ",type(hashtags))
+#print("\nhashTagCount list type: ",type(hashTagCount))
 
 #Terminate after 100 seconds
 query.awaitTermination(100)
