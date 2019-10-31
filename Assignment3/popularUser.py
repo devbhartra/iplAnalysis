@@ -43,6 +43,7 @@ dfCSV = spark.readStream.option("sep",";").option("header","false").schema(userS
 dfCSV.createOrReplaceTempView("popularUser")
 
 # SQL query on the data
+
 popularity = spark.sql("select Name as name, Followers/Friends as FRRatio from popularUser").limit(1)
 
 #temp = popularity.orderBy(desc("FRRatio"))
