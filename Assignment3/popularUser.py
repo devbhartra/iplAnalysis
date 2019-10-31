@@ -43,13 +43,9 @@ dfCSV = spark.readStream.option("sep",";").option("header","false").schema(userS
 dfCSV.createOrReplaceTempView("popularUser")
 
 # SQL query on the data
+popularity = spark.sql("select Name as name, Followers/Friends as FRRatio from popularUser").limit(1)
 
-#followers = spark.sql("select Followers from popularUser")
-#friends = spark.sql("select Friends from popularUser")
-popularity = spark.sql("select Name as name, Followers/Friends as FRRatio from popularUser")
-
-#print(followers)
-#print (friends)
+#temp = popularity.orderBy(desc("FRRatio"))
 
 #hashTagCount = hashtags.groupBy("tag").count().orderBy(col("count").desc()).limit(1)
 
