@@ -59,7 +59,6 @@ hashTagCount = hashtags.groupBy("Hashtags").count().orderBy(col("count").desc())
 
 # Start spark standard streaming query.
 query = hashTagCount.writeStream.outputMode("complete").format("console").start()
-print(type(query))
 
 #print("\nallTags type: ",type(allTags))
 #print("\nhashtag type: ",type(hashtags))
