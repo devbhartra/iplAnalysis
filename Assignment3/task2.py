@@ -36,7 +36,7 @@ if __name__ == "__main__":
     counts = lines.map(lambda line: line.split(';')[7])\
                   .flatMap(lambda x:x.split(','))\
                   .map(lambda word: (word, 1))\
-                  .reduceByKeyAndWindow(lambda a, b: a+b,None,int(sys.argv[1]),slideDuration=None)
+                  .reduceByKeyAndWindow(lambda a, b: a+b,None,int(sys.argv[1]),slideDuration=1)
     counts.foreachRDD(sortrecord)
     #counts.pprint()
 
