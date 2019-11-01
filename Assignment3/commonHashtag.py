@@ -53,9 +53,9 @@ dfCSV.createOrReplaceTempView("commonHashtag")
 
 allTags = spark.sql("select Hashtags from commonHashtag")
 
-hashtags = allTags.select(explode(split(allTags['Hashtags'],",")).alias("Hashtag"))	
+hashtags = allTags.select(explode(split(allTags['Hashtags'],",")).alias("Hashtags"))	
 
-hashTagCount = hashtags.groupBy("Hashtag").count().orderBy(col("count").desc()).limit(5)
+hashTagCount = hashtags.groupBy("Hashtags").count().orderBy(col("count").desc()).limit(5)
 
 # Start spark standard streaming query.
 query = hashTagCount.writeStream.outputMode("complete").format("console").start()
