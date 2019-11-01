@@ -7,18 +7,16 @@ import sys
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 
-'''
 def remove_empty_string_if_any(l):
     for i in l:
         if i[0]=='':
             l.remove(i)
             return l
     return l[:-1]
-'''
 
 def sortrecord(rdd):
-    l = rdd.sortBy(lambda x:x[1],ascending=False).collect()[:5]
-    #l = remove_empty_string_if_any(l)
+    l = rdd.sortBy(lambda x:x[1],ascending=False).collect()[:6]
+    l = remove_empty_string_if_any(l)
     l.sort(key=lambda x:x[0],reverse=False)
     l.sort(key=lambda x:x[1],reverse=True)
     l = list(map(lambda x:x[0],l))
