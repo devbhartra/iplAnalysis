@@ -44,14 +44,22 @@ dfCSV.createOrReplaceTempView("popularUser")
 
 # SQL query on the data
 
-popularity = spark.sql("select Name as name, Followers/Friends as FRRatio from popularUser").limit(1)
+popularity = spark.sql("select Name as name, Followers/Friends as FRRatio from popularUser")
 
 #temp = popularity.orderBy(desc("FRRatio"))
 
-#hashTagCount = hashtags.groupBy("tag").count().orderBy(col("count").desc()).limit(1)
+temp = popularity.groupBy("name","FRRatio").count().orderBy(col("FRRatio").desc()).limit(1)
+
+#print("dfCSV: ",type(dfCSV))
+#print("temp: ",type(temp))
+
+temp.createOrReplaceTempView("temp")
+
+final = spark.sql("select name,FRRatio from temp")
 
 # Start spark standard streaming query.
-query = popularity.writeStream.outputMode("append").format("console").start()
+query = final.writeStream.outputMode("complete").format("console").start()
 
 #Terminate after 100 seconds
 query.awaitTermination(100)
+
